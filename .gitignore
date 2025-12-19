@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/RestaurantAPI10/restaurant.db-shm
+/RestaurantAPI10/restaurant.db-wal
