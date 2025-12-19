@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using RestaurantAPI10.Data.Interfaces;
-using RestaurantAPI10.Models;
+using RestaurantAPI10.DTOs.OrderDTO;
+using RestaurantAPI10.Helpers;
+using RestaurantAPI10.Services;
 
 namespace RestaurantAPI10.Controllers
 {
@@ -8,48 +9,62 @@ namespace RestaurantAPI10.Controllers
     [ApiController]
     public class OrdersController : ControllerBase
     {
-        private readonly IOrderRepository _orderRepository;
+        private readonly IOrderService _orderService;
 
-        public OrdersController(IOrderRepository orderRepository)
+        public OrdersController(IOrderService orderService)
         {
-            _orderRepository = orderRepository;
+            _orderService = orderService;
         }
 
-        // GET: api/orders
+        /// <summary>
+        /// Получить все заказы
+        /// </summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
+        public async Task<ActionResult<ApiResponse<IEnumerable<OrderReadDto>>>> GetOrders()
         {
-            var orders = await _orderRepository.GetAllAsync();
-            return Ok(orders);
+            var orders = await _orderService.GetAllOrdersAsync();
+            return Ok(ApiResponse<IEnumerable<OrderReadDto>>.Ok(orders));
         }
 
-        // GET: api/orders/5
+        /// <summary>
+        /// Получить заказ по ID
+        /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<Order>> GetOrder(int id)
+        public async Task<ActionResult<ApiResponse<OrderReadDto>>> GetOrder(int id)
         {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-            return Ok(order);
+            var order = await _orderService.GetOrderByIdAsync(id);
+            return Ok(ApiResponse<OrderReadDto>.Ok(order));
         }
 
-        // POST: api/orders
+        /// <summary>
+        /// Создать новый заказ
+        /// </summary>
         [HttpPost]
-        public async Task<ActionResult<Order>> CreateOrder(Order order)
+        public async Task<ActionResult<ApiResponse<OrderReadDto>>> CreateOrder(OrderCreateDto orderCreateDto)
         {
-            await _orderRepository.AddAsync(order);
-            await _orderRepository.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+            var order = await _orderService.CreateOrderAsync(orderCreateDto);
+            return CreatedAtAction(nameof(GetOrder), new { id = order.Id },
+                ApiResponse<OrderReadDto>.Ok(order, "Заказ успешно создан"));
         }
 
-        // GET: api/orders/by-status/Pending
-        [HttpGet("by-status/{status}")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByStatus(string status)
+        /// <summary>
+        /// Обновить существующий заказ
+        /// </summary>
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateOrder(int id, OrderUpdateDto orderUpdateDto)
         {
-            var orders = await _orderRepository.GetOrdersByStatusAsync(status);
-            return Ok(orders);
+            await _orderService.UpdateOrderAsync(id, orderUpdateDto);
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Удалить заказ
+        /// </summary>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteOrder(int id)
+        {
+            await _orderService.DeleteOrderAsync(id);
+            return NoContent();
         }
     }
 }
