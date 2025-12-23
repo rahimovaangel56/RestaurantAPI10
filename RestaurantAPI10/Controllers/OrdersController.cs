@@ -9,61 +9,36 @@ namespace RestaurantAPI10.Controllers
     [ApiController]
     public class OrdersController : ControllerBase
     {
-        private readonly IOrderService _orderService;
+        private readonly IOrderService _service;
+        public OrdersController(IOrderService service) => _service = service;
 
-        public OrdersController(IOrderService orderService)
-        {
-            _orderService = orderService;
-        }
-
-        /// <summary>
-        /// Получить все заказы
-        /// </summary>
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IEnumerable<OrderReadDto>>>> GetOrders()
-        {
-            var orders = await _orderService.GetAllOrdersAsync();
-            return Ok(ApiResponse<IEnumerable<OrderReadDto>>.Ok(orders));
-        }
+        public async Task<ActionResult<ApiResponse<IEnumerable<OrderReadDto>>>> GetAll()
+            => Ok(ApiResponse<IEnumerable<OrderReadDto>>.Ok(await _service.GetAllOrdersAsync()));
 
-        /// <summary>
-        /// Получить заказ по ID
-        /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<OrderReadDto>>> GetOrder(int id)
-        {
-            var order = await _orderService.GetOrderByIdAsync(id);
-            return Ok(ApiResponse<OrderReadDto>.Ok(order));
-        }
+        public async Task<ActionResult<ApiResponse<OrderReadDto>>> Get(int id)
+            => Ok(ApiResponse<OrderReadDto>.Ok(await _service.GetOrderByIdAsync(id)));
 
-        /// <summary>
-        /// Создать новый заказ
-        /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<OrderReadDto>>> CreateOrder(OrderCreateDto orderCreateDto)
+        public async Task<ActionResult<ApiResponse<OrderReadDto>>> Create(OrderCreateDto dto)
         {
-            var order = await _orderService.CreateOrderAsync(orderCreateDto);
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id },
-                ApiResponse<OrderReadDto>.Ok(order, "Заказ успешно создан"));
+            var result = await _service.CreateOrderAsync(dto);
+            return CreatedAtAction(nameof(Get), new { id = result.Id },
+                ApiResponse<OrderReadDto>.Ok(result, "Заказ создан"));
         }
 
-        /// <summary>
-        /// Обновить существующий заказ
-        /// </summary>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateOrder(int id, OrderUpdateDto orderUpdateDto)
+        public async Task<IActionResult> Update(int id, OrderUpdateDto dto)
         {
-            await _orderService.UpdateOrderAsync(id, orderUpdateDto);
+            await _service.UpdateOrderAsync(id, dto);
             return NoContent();
         }
 
-        /// <summary>
-        /// Удалить заказ
-        /// </summary>
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteOrder(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            await _orderService.DeleteOrderAsync(id);
+            await _service.DeleteOrderAsync(id);
             return NoContent();
         }
     }

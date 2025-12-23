@@ -7,7 +7,7 @@ using RestaurantAPI10.Models;
 namespace RestaurantAPI10.Services
 {
     /// <summary>
-    /// Сервис для работы с заказами, реализующий бизнес-логику
+    /// Сервис для работы с заказами
     /// </summary>
     public class OrderService : IOrderService
     {
@@ -15,7 +15,7 @@ namespace RestaurantAPI10.Services
         private readonly IMapper _mapper;
 
         /// <summary>
-        /// Конструктор сервиса заказов
+        /// Конструктор сервиса
         /// </summary>
         public OrderService(RestaurantDbContext context, IMapper mapper)
         {
@@ -24,9 +24,8 @@ namespace RestaurantAPI10.Services
         }
 
         /// <summary>
-        /// Получить все заказы с детализацией
+        /// Получить все заказы
         /// </summary>
-        /// <returns>Коллекция DTO заказов</returns>
         public async Task<IEnumerable<OrderReadDto>> GetAllOrdersAsync()
         {
             try
@@ -47,11 +46,8 @@ namespace RestaurantAPI10.Services
         }
 
         /// <summary>
-        /// Получить заказ по ID с проверкой существования
+        /// Получить заказ по ID
         /// </summary>
-        /// <param name="id">ID заказа</param>
-        /// <returns>DTO заказа</returns>
-        /// <exception cref="KeyNotFoundException">Заказ не найден</exception>
         public async Task<OrderReadDto> GetOrderByIdAsync(int id)
         {
             try
@@ -78,11 +74,8 @@ namespace RestaurantAPI10.Services
         }
 
         /// <summary>
-        /// Создать новый заказ с валидацией данных
+        /// Создать новый заказ
         /// </summary>
-        /// <param name="orderCreateDto">DTO для создания заказа</param>
-        /// <returns>DTO созданного заказа</returns>
-        /// <exception cref="ArgumentException">Неверные данные заказа</exception>
         public async Task<OrderReadDto> CreateOrderAsync(OrderCreateDto orderCreateDto)
         {
             try
@@ -93,20 +86,11 @@ namespace RestaurantAPI10.Services
                 if (customer == null)
                     throw new ArgumentException($"Клиент с ID {orderCreateDto.CustomerId} не найден");
 
-                var dishIds = orderCreateDto.OrderItems.Select(oi => oi.DishId).Distinct();
-                var existingDishes = await _context.Dishes
-                    .Where(d => dishIds.Contains(d.Id))
-                    .Select(d => d.Id)
-                    .ToListAsync();
-
-                var missingDishes = dishIds.Except(existingDishes).ToList();
-                if (missingDishes.Any())
-                    throw new ArgumentException($"Блюда с ID {string.Join(", ", missingDishes)} не найдены");
-
                 var order = new Order
                 {
                     CustomerId = orderCreateDto.CustomerId,
                     OrderDate = orderCreateDto.OrderDate,
+                    Status = orderCreateDto.Status,
                     OrderItems = new List<OrderItem>()
                 };
 
@@ -114,9 +98,8 @@ namespace RestaurantAPI10.Services
                 foreach (var itemDto in orderCreateDto.OrderItems)
                 {
                     var dish = await _context.Dishes.FindAsync(itemDto.DishId);
-
                     if (dish == null)
-                        continue; 
+                        continue;
 
                     var orderItem = new OrderItem
                     {
@@ -148,17 +131,8 @@ namespace RestaurantAPI10.Services
         }
 
         /// <summary>
-        /// Обновить существующий заказ
+        /// Обновить заказ
         /// </summary>
-        /// <param name="id">ID заказа</param>
-        /// <param name="orderUpdateDto">DTO для обновления заказа</param>
-        /// <exception cref="KeyNotFoundException">Заказ не найден</exception>
-        /// <summary>
-        /// Обновить существующий заказ
-        /// </summary>
-        /// <param name="id">ID заказа</param>
-        /// <param name="orderUpdateDto">DTO для обновления заказа</param>
-        /// <exception cref="KeyNotFoundException">Заказ не найден</exception>
         public async Task UpdateOrderAsync(int id, OrderUpdateDto orderUpdateDto)
         {
             try
@@ -208,10 +182,8 @@ namespace RestaurantAPI10.Services
         }
 
         /// <summary>
-        /// Удалить заказ по ID
+        /// Удалить заказ
         /// </summary>
-        /// <param name="id">ID заказа</param>
-        /// <exception cref="KeyNotFoundException">Заказ не найден</exception>
         public async Task DeleteOrderAsync(int id)
         {
             try
@@ -224,7 +196,6 @@ namespace RestaurantAPI10.Services
                     throw new KeyNotFoundException($"Заказ с ID {id} не найден");
 
                 _context.OrderItems.RemoveRange(order.OrderItems);
-
                 _context.Orders.Remove(order);
 
                 await _context.SaveChangesAsync();
@@ -236,69 +207,6 @@ namespace RestaurantAPI10.Services
             catch (Exception ex)
             {
                 throw new Exception($"Ошибка при удалении заказа с ID {id}", ex);
-            }
-        }
-
-        /// <summary>
-        /// Получить заказы по ID клиента
-        /// </summary>
-        /// <param name="customerId">ID клиента</param>
-        /// <returns>Коллекция DTO заказов клиента</returns>
-        public async Task<IEnumerable<OrderReadDto>> GetOrdersByCustomerIdAsync(int customerId)
-        {
-            try
-            {
-                var orders = await _context.Orders
-                    .Where(o => o.CustomerId == customerId)
-                    .Include(o => o.Customer)
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Dish)
-                    .OrderByDescending(o => o.OrderDate)
-                    .ToListAsync();
-
-                return _mapper.Map<IEnumerable<OrderReadDto>>(orders);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Ошибка при получении заказов клиента с ID {customerId}", ex);
-            }
-        }
-
-        /// <summary>
-        /// Рассчитать общую сумму заказа на основе его позиций
-        /// </summary>
-        /// <param name="orderId">ID заказа</param>
-        /// <returns>Общая сумма заказа</returns>
-        /// <exception cref="KeyNotFoundException">Заказ не найден</exception>
-        public async Task<decimal> CalculateOrderTotalAsync(int orderId)
-        {
-            try
-            {
-                var order = await _context.Orders
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Dish)
-                    .FirstOrDefaultAsync(o => o.Id == orderId);
-
-                if (order == null)
-                    throw new KeyNotFoundException($"Заказ с ID {orderId} не найден");
-
-                decimal total = order.OrderItems.Sum(oi => oi.Quantity * oi.Price);
-
-                if (order.TotalAmount != total)
-                {
-                    order.TotalAmount = total;
-                    await _context.SaveChangesAsync();
-                }
-
-                return total;
-            }
-            catch (KeyNotFoundException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Ошибка при расчете суммы заказа с ID {orderId}", ex);
             }
         }
     }

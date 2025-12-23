@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RestaurantAPI10.Data;
@@ -16,13 +17,18 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<RestaurantDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddAutoMapper(cfg => { }, typeof(Program));
 
+builder.Services.AddAutoMapper(cfg => { }, typeof(Program));
 
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IDishService, DishService>();
+builder.Services.AddScoped<IRestaurantService, RestaurantService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<ITableService, TableService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
 builder.Services.AddLogging();
